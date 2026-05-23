@@ -1,0 +1,31 @@
+# QuantCore — Python dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core trading ──────────────────────────────────────────────────────
+freqtrade>=2024.1
+
+# ── Exchange connectivity ─────────────────────────────────────────────
+ccxt>=4.2.0
+
+# ── Data processing ───────────────────────────────────────────────────
+pandas>=2.0.0
+numpy>=1.24.0
+
+# ── API server ────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0
+
+# ── Visualisation ─────────────────────────────────────────────────────
+plotly>=5.18.0
+matplotlib>=3.7.0
+
+# ── Notebooks ─────────────────────────────────────────────────────────
+jupyter>=1.0.0
+ipykernel>=6.0.0
+
+# ── Dev / testing ─────────────────────────────────────────────────────
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+black>=23.0.0
+ruff>=0.1.0

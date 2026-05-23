@@ -1,0 +1,132 @@
+{
+  "$schema": "https://schema.freqtrade.io/schema.json",
+  "strategy": "QuantCoreStrategy",
+  "timeframe": "4h",
+
+  "max_open_trades": 3,
+  "stake_currency": "USDT",
+  "stake_amount": "unlimited",
+  "tradable_balance_ratio": 0.90,
+  "available_capital": 1000,
+  "amend_last_stake_amount": true,
+
+  "dry_run": true,
+  "dry_run_wallet": 1000,
+
+  "cancel_open_orders_on_exit": true,
+  "use_exit_signal": true,
+  "exit_profit_only": false,
+  "ignore_roi_if_entry_signal": false,
+
+  "exchange": {
+    "name": "kucoin",
+    "key": "",
+    "secret": "",
+    "password": "",
+    "ccxt_config": {
+      "enableRateLimit": true
+    },
+    "ccxt_async_config": {
+      "enableRateLimit": true,
+      "rateLimit": 200
+    },
+    "pair_whitelist": [
+      "BTC/USDT",
+      "ETH/USDT",
+      "SOL/USDT",
+      "BNB/USDT",
+      "XRP/USDT",
+      "AVAX/USDT"
+    ],
+    "pair_blacklist": [
+      "BNB/.*",
+      ".*/BTC",
+      "(.*)(LEVERAGED|BEAR|BULL|UP|DOWN|3L|3S|2L|2S)(\\/.*)"
+    ]
+  },
+
+  "pairlists": [
+    {
+      "method": "VolumePairList",
+      "number_assets": 20,
+      "sort_key": "quoteVolume",
+      "min_value": 1000000
+    },
+    { "method": "AgeFilter", "min_days_listed": 30 },
+    { "method": "PrecisionFilter" },
+    { "method": "PriceFilter", "low_price_ratio": 0.01 },
+    { "method": "SpreadFilter", "max_spread_ratio": 0.005 },
+    { "method": "RangeStabilityFilter", "lookback_days": 10, "min_rate_of_change": 0.01 }
+  ],
+
+  "entry_pricing": {
+    "price_side": "same",
+    "use_order_book": true,
+    "order_book_top": 1,
+    "check_depth_of_market": {
+      "enabled": false,
+      "bids_to_ask_delta": 1
+    }
+  },
+  "exit_pricing": {
+    "price_side": "same",
+    "use_order_book": true,
+    "order_book_top": 1
+  },
+
+  "order_types": {
+    "entry":    "limit",
+    "exit":     "limit",
+    "stoploss": "market",
+    "stoploss_on_exchange": true,
+    "stoploss_on_exchange_interval": 60,
+    "stoploss_on_exchange_limit_ratio": 0.99
+  },
+
+  "order_time_in_force": {
+    "entry": "GTC",
+    "exit":  "GTC"
+  },
+
+  "unfilledtimeout": {
+    "entry": 10,
+    "exit":  30,
+    "exit_timeout_count": 0,
+    "unit": "minutes"
+  },
+
+  "telegram": {
+    "enabled": false,
+    "token": "",
+    "chat_id": "",
+    "notification_settings": {
+      "status":       "silent",
+      "warning":      "on",
+      "startup":      "on",
+      "entry":        "on",
+      "exit":         "on",
+      "entry_cancel": "on",
+      "exit_cancel":  "on",
+      "protection_trigger": "on"
+    }
+  },
+
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "127.0.0.1",
+    "listen_port": 8080,
+    "verbosity": "error",
+    "enable_openapi": true,
+    "jwt_secret_key": "CHANGE_ME_generate_with_openssl_rand_-hex_32",
+    "CORS_origins": ["http://localhost:3000"],
+    "username": "quantcore",
+    "password": "CHANGE_ME"
+  },
+
+  "bot_name": "QuantCore",
+  "initial_state": "running",
+  "force_entry_enable": false,
+  "internals": {
+    "process_throttle_secs": 5
+  }
+}
