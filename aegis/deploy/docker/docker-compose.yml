@@ -1,0 +1,175 @@
+# AEGIS Trading System - Docker Compose for Development and Testing
+# Production should use Kubernetes
+
+version: '3.8'
+
+services:
+  # =====================
+  # Core Application
+  # =====================
+  aegis-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: aegis-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    volumes:
+      - ../../:/app
+      - model-storage:/app/models
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # =====================
+  # Database: PostgreSQL + TimescaleDB
+  # =====================
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: aegis-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=aegis
+      - POSTGRES_USER=aegis_user
+      - POSTGRES_PASSWORD=aegis_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_user -d aegis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # =====================
+  # Cache: Redis
+  # =====================
+  redis:
+    image: redis:7-alpine
+    container_name: aegis-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # =====================
+  # Message Queue: Kafka
+  # =====================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: aegis-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT://kafka:9092
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT://0.0.0.0:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # =====================
+  # Monitoring: Prometheus
+  # =====================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: aegis-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # =====================
+  # Monitoring: Grafana
+  # =====================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: aegis-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # =====================
+  # ML Flow: Experiment Tracking
+  # =====================
+  mlflow:
+    image: python:3.11-slim
+    container_name: aegis-mlflow
+    ports:
+      - "5000:5000"
+    working_dir: /app
+    command: >
+      bash -c "pip install mlflow && 
+               mlflow server 
+               --host 0.0.0.0 
+               --port 5000 
+               --backend-store-uri sqlite:///mlflow.db 
+               --default-artifact-root /mlflow-artifacts"
+    volumes:
+      - mlflow-data:/mlflow-artifacts
+      - ../../models:/app/models
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+networks:
+  aegis-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:
+  prometheus-data:
+  grafana-data:
+  mlflow-data:
+  model-storage:
